@@ -13,24 +13,55 @@
         <input type="text" id="message-input" placeholder="Type your message...">
         <button onclick="sendMessage()">Send</button>
     </div>
+
+    <!-- Hidden fields for username and server -->
+    <input type="hidden" id="username" value="{{ username }}">
+    <input type="hidden" id="server" value="{{ server }}">
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
     <script>
+        // Connect to the WebSocket via Socket.IO
         var socket = io();
-        var username = "{{ username }}";
-        var server = "{{ server }}";
 
-        socket.emit('join', {username: username, server: server});
+        // Retrieve the username and server values from hidden inputs
+        var username = document.getElementById('username').value;
+        var server = document.getElementById('server').value;
 
-        socket.on('message', function(data) {
+        // Join the chatroom (server) when the page loads
+        socket.emit('join', { username: username, server: server });
+
+        // Listen for messages from the server and display them in the chat box
+        socket.on('message', function (data) {
             var chatBox = document.getElementById('chat-box');
-            chatBox.innerHTML += `<p>${data.msg}</p>`;
+            var messageElement = document.createElement('p');
+            messageElement.textContent = data.msg;
+
+            chatBox.appendChild(messageElement);
+            chatBox.scrollTop = chatBox.scrollHeight; // Auto-scroll to the latest message
         });
 
+        // Send the message to the server
         function sendMessage() {
-            var msg = document.getElementById('message-input').value;
-            socket.emit('message', {username: username, msg: msg, server: server});
-            document.getElementById('message-input').value = '';
+            var messageInput = document.getElementById('message-input');
+            var message = messageInput.value;
+
+            if (message.trim()) {  // Ensure non-empty messages
+                socket.emit('message', { username: username, msg: message, server: server });
+                messageInput.value = '';  // Clear the input field after sending
+            }
         }
+
+        // Handle the 'Enter' key press to send a message
+        document.getElementById('message-input').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        // Notify the server when the user leaves the chat
+        window.addEventListener('beforeunload', function () {
+            socket.emit('leave', { username: username, server: server });
+        });
     </script>
 </body>
 </html>
